@@ -11,16 +11,13 @@ const GOOGLE_CREDENTIALS_PATH = path.join(
   "credentials.json"
 );
 
-const redirect_uri = `http://localhost:${config.settings.node_application_port}/gmail/callback`;
-
 module.exports = {
   Authorization: async (req, res) => {
-    const fullUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}`;
     try {
       const oauth2Client = new OAuth2Client(
         config.settings.gmail_client_id,
         config.settings.gmail_client_secret,
-        `${req.protocol}://${req.hostname}:${req.socket.localPort}/gmail/callback`
+        `https://oauth-email-integration.onrender.com/gmail/callback`
       );
       const scopes = [
         config.settings.gmail_user_info_scope,
@@ -42,7 +39,7 @@ module.exports = {
     const oauth2Client = new OAuth2Client(
       config.settings.gmail_client_id,
       config.settings.gmail_client_secret,
-      redirect_uri
+      `https://oauth-email-integration.onrender.com/gmail/callback`
     );
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
