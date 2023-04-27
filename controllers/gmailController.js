@@ -15,11 +15,12 @@ const redirect_uri = `http://localhost:${config.settings.node_application_port}/
 
 module.exports = {
   Authorization: async (req, res) => {
+    const fullUrl = `${req.protocol}://${req.hostname}:${req.socket.localPort}`;
     try {
       const oauth2Client = new OAuth2Client(
         config.settings.gmail_client_id,
         config.settings.gmail_client_secret,
-        redirect_uri
+        `${req.protocol}://${req.hostname}:${req.socket.localPort}/gmail/callback`
       );
       const scopes = [
         config.settings.gmail_user_info_scope,
@@ -83,7 +84,7 @@ module.exports = {
 
     try {
       // Fetch the emails
-      console.log('Fetch the emails');
+      console.log("Fetch the emails");
       const response = await service.users.messages.list({
         userId: userId,
       });
@@ -91,7 +92,7 @@ module.exports = {
       const messages = response.data.messages || [];
       res.status(200).send(messages);
     } catch (error) {
-      console.log('Error block');
+      console.log("Error block");
       res.status(400).send(error);
     }
   },
