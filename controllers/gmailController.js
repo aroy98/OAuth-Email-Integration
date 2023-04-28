@@ -13,7 +13,7 @@ const GOOGLE_CREDENTIALS_PATH = path.join(
 
 const http_redirect_url = "http://localhost:3000/gmail/callback";
 const https_redirect_url =
-  "https://oauth-email-integration.nrender.com/gmail/callback";
+  "https://oauth-email-integration.onrender.com/gmail/callback";
 
 const deep_link_url = 'https://webviewlogin.page.link/home';
 
