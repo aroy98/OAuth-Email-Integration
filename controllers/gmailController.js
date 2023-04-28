@@ -13,7 +13,7 @@ const GOOGLE_CREDENTIALS_PATH = path.join(
 
 const http_redirect_url = "http://localhost:3000/gmail/callback";
 const https_redirect_url =
-  "ohttps://oauth-email-integration.nrender.com/gmail/callback";
+  "https://oauth-email-integration.nrender.com/gmail/callback";
 
 const deep_link_url = 'https://webviewlogin.page.link/home';
 
@@ -59,8 +59,8 @@ module.exports = {
     });
     const { data: userInfo } = await oauth2.userinfo.get();
     module.exports.SaveUserInfo(userInfo.id, { ...tokens, ...userInfo });
-    res.send({ ...tokens, ...userInfo })
-    // res.redirect(deep_link_url + `?access_token=${tokens.access_token}`);
+    // res.send({ ...tokens, ...userInfo })
+    res.redirect(deep_link_url + `?access_token=${tokens.access_token}`);
   },
 
   SaveUserInfo: async (file_name, credentials) => {
