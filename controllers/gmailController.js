@@ -5,6 +5,7 @@ const parentDir = "user_credentials";
 const subDir = "Gmail";
 const path = require("path");
 const fs = require("fs");
+const axios = require("axios");
 
 const GOOGLE_CREDENTIALS_PATH = path.join(
   path.resolve(__dirname, "../project_credentials/Gmail"),
@@ -15,7 +16,8 @@ const http_redirect_url = "http://localhost:3000/gmail/callback";
 const https_redirect_url =
   "https://oauth-email-integration.onrender.com/gmail/callback";
 
-const deep_link_url = 'https://webviewlogin.page.link/home';
+const deep_link_error_url = "https://webviewlogin.page.link/home";
+const deep_link_url = "https://webviewlogin.page.link/deeplink-test";
 
 module.exports = {
   Authorization: async (req, res) => {
@@ -59,8 +61,25 @@ module.exports = {
     });
     const { data: userInfo } = await oauth2.userinfo.get();
     module.exports.SaveUserInfo(userInfo.id, { ...tokens, ...userInfo });
-    // res.send({ ...tokens, ...userInfo })
-    res.redirect(deep_link_url + `?access_token=${tokens.access_token}`);
+    try {
+      const response = await axios.post(
+        "https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=AIzaSyBREjiqzzSLA4pd-_5ONK8Zbt56nS3bRLk",
+        {
+          dynamicLinkInfo: {
+            domainUriPrefix: "https://webviewlogin.page.link",
+            link: `${deep_link_url}?access_token=${tokens.access_token}`,
+            androidInfo: {
+              androidPackageName: "com.poc_login.web_view_login",
+            }
+          },
+        }
+      );
+      const { shortLink } = response.data;
+      res.redirect(shortLink);
+    } catch (error) {
+      console.log({ error });
+      res.redirect(deep_link_error_url);
+    }
   },
 
   SaveUserInfo: async (file_name, credentials) => {
