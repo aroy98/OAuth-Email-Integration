@@ -12,7 +12,10 @@ const GOOGLE_CREDENTIALS_PATH = path.join(
 );
 
 const http_redirect_url = "http://localhost:3000/gmail/callback";
-const https_redirect_url = "https://webviewlogin.page.link/home";
+const https_redirect_url =
+  "ohttps://oauth-email-integration.nrender.com/gmail/callback";
+
+const deep_link_url = 'https://webviewlogin.page.link/home';
 
 module.exports = {
   Authorization: async (req, res) => {
@@ -20,8 +23,8 @@ module.exports = {
       const oauth2Client = new OAuth2Client(
         config.settings.gmail_client_id,
         config.settings.gmail_client_secret,
-        https_redirect_url
         // `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
+        https_redirect_url
       );
       const scopes = [
         config.settings.gmail_user_info_scope,
@@ -43,8 +46,8 @@ module.exports = {
     const oauth2Client = new OAuth2Client(
       config.settings.gmail_client_id,
       config.settings.gmail_client_secret,
-      https_redirect_url
       // `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
+      https_redirect_url
     );
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
@@ -56,7 +59,7 @@ module.exports = {
     });
     const { data: userInfo } = await oauth2.userinfo.get();
     module.exports.SaveUserInfo(userInfo.id, { ...tokens, ...userInfo });
-    res.send({ ...tokens, ...userInfo });
+    res.redirect(deep_link_url + `?access_token=${tokens.access_token}`);
   },
 
   SaveUserInfo: async (file_name, credentials) => {
