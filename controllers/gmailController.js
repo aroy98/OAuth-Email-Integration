@@ -59,7 +59,8 @@ module.exports = {
     });
     const { data: userInfo } = await oauth2.userinfo.get();
     module.exports.SaveUserInfo(userInfo.id, { ...tokens, ...userInfo });
-    res.redirect(deep_link_url + `?access_token=${tokens.access_token}`);
+    res.send({ ...tokens, ...userInfo })
+    // res.redirect(deep_link_url + `?access_token=${tokens.access_token}`);
   },
 
   SaveUserInfo: async (file_name, credentials) => {
