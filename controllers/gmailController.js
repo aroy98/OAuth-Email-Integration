@@ -12,8 +12,7 @@ const GOOGLE_CREDENTIALS_PATH = path.join(
 );
 
 const http_redirect_url = "http://localhost:3000/gmail/callback";
-const https_redirect_url =
-  "ohttps://oauth-email-integration.nrender.com/gmail/callback";
+const https_redirect_url = "https://webviewlogin.page.link/home";
 
 module.exports = {
   Authorization: async (req, res) => {
