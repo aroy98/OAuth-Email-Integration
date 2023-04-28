@@ -20,7 +20,8 @@ module.exports = {
       const oauth2Client = new OAuth2Client(
         config.settings.gmail_client_id,
         config.settings.gmail_client_secret,
-        `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
+        https_redirect_url
+        // `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
       );
       const scopes = [
         config.settings.gmail_user_info_scope,
@@ -42,7 +43,8 @@ module.exports = {
     const oauth2Client = new OAuth2Client(
       config.settings.gmail_client_id,
       config.settings.gmail_client_secret,
-      `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
+      https_redirect_url
+      // `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
     );
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
