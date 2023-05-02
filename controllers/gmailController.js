@@ -6,6 +6,7 @@ const subDir = "Gmail";
 const path = require("path");
 const fs = require("fs");
 const axios = require("axios");
+const { authenticate } = require("@google-cloud/local-auth");
 
 const GOOGLE_CREDENTIALS_PATH = path.join(
   path.resolve(__dirname, "../project_credentials/Gmail"),
@@ -19,48 +20,43 @@ const https_redirect_url =
 const deep_link_error_url = "https://webviewlogin.page.link/home";
 const deep_link_url = "https://webviewlogin.page.link/deeplink-test";
 
+const CLIENT_ID = config.settings.gmail_client_id;
+const CLIENT_SECRET = config.settings.gmail_client_secret;
+
 module.exports = {
-  Authorization: async (req, res) => {
-    try {
-      const oauth2Client = new OAuth2Client(
-        config.settings.gmail_client_id,
-        config.settings.gmail_client_secret,
-        // `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
-        https_redirect_url
-      );
-      const scopes = [
-        config.settings.gmail_user_info_scope,
-        config.settings.gmail_email_scope,
-      ];
-      const url = oauth2Client.generateAuthUrl({
-        access_type: "offline",
-        scope: scopes,
-      });
-      res.redirect(url);
-    } catch (error) {
-      console.log({ error });
-      res.status(400).send("Failed");
-    }
+  Authorization: (req, res) => {
+    const authClient = new OAuth2Client(
+      CLIENT_ID,
+      CLIENT_SECRET,
+      https_redirect_url
+    );
+
+    const authUrl = authClient.generateAuthUrl({
+      access_type: "offline",
+      scope: [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/userinfo.email",
+      ],
+    });
+
+    res.redirect(authUrl);
   },
 
   RetrieveTokens: async (req, res) => {
-    const { code } = req.query;
-    const oauth2Client = new OAuth2Client(
-      config.settings.gmail_client_id,
-      config.settings.gmail_client_secret,
-      // `${req.protocol}` === "http" ? http_redirect_url : https_redirect_url
+    const authClient = new OAuth2Client(
+      CLIENT_ID,
+      CLIENT_SECRET,
       https_redirect_url
     );
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
 
-    // Use the access token to retrieve the user's email ID
-    const oauth2 = google.oauth2({
-      auth: oauth2Client,
-      version: "v2",
-    });
-    const { data: userInfo } = await oauth2.userinfo.get();
-    module.exports.SaveUserInfo(userInfo.id, { ...tokens, ...userInfo });
+    const { tokens } = await authClient.getToken(req.query.code);
+
+    authClient.setCredentials(tokens);
+
+    const userInfo = google.oauth2({ version: "v2", auth: authClient });
+
+    const { data: profile } = await userInfo.userinfo.get({});
+
     try {
       const response = await axios.post(
         "https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=AIzaSyBREjiqzzSLA4pd-_5ONK8Zbt56nS3bRLk",
@@ -70,7 +66,7 @@ module.exports = {
             link: `${deep_link_url}?access_token=${tokens.access_token}`,
             androidInfo: {
               androidPackageName: "com.poc_login.web_view_login",
-            }
+            },
           },
         }
       );
@@ -80,12 +76,20 @@ module.exports = {
       console.log({ error });
       res.redirect(deep_link_error_url);
     }
+
+    await module.exports.SaveUserInfo(profile.id, {
+      tokens,
+      clientId: CLIENT_ID,
+      profile,
+    });
   },
 
   SaveUserInfo: async (file_name, credentials) => {
     if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir);
+
     if (!fs.existsSync(`${parentDir}/${subDir}`))
       fs.mkdirSync(`${parentDir}/${subDir}`);
+
     await fs.promises.writeFile(
       `${parentDir}/${subDir}/${file_name}.json`,
       JSON.stringify(credentials)
@@ -93,32 +97,66 @@ module.exports = {
   },
 
   RetrieveEmails: async (req, res) => {
-    const access_token = req.get("Authorization");
-    console.log({ access_token });
-    // Set up the credentials object from the access token
-    const creds = new google.auth.OAuth2();
-    creds.setCredentials(access_token);
-    console.log({ creds });
-
-    // Define the email service
-    const service = google.gmail({ version: "v1", auth: creds });
-    console.log({ service });
-
-    // Define the user to fetch email for (can be 'me' or a specific user ID)
-    const userId = "me";
-
     try {
-      // Fetch the emails
-      console.log("Fetch the emails");
-      const response = await service.users.messages.list({
-        userId: userId,
+      const userId = req.query.id;
+      const savedData = fs.readFileSync(
+        `${parentDir}/${subDir}/${userId}.json`,
+        "utf-8"
+      );
+      const { tokens, clientId, expirationDate } = JSON.parse(savedData);
+
+      const authClient = new OAuth2Client(
+        CLIENT_ID,
+        CLIENT_SECRET,
+        https_redirect_url
+      );
+      authClient.setCredentials(tokens);
+
+      if (expirationDate && new Date(expirationDate) < new Date()) {
+        // Refresh the access token if it has expired
+        const refreshedTokens = await authClient.refreshToken(
+          tokens.refresh_token
+        );
+        authClient.setCredentials(refreshedTokens.res.data);
+      }
+
+      const gmail = google.gmail({ version: "v1", auth: authClient });
+
+      const response = await gmail.users.messages.list({
+        userId: "me",
       });
-      console.log({ response });
+
       const messages = response.data.messages || [];
-      res.status(200).send(messages);
+
+      const emails = await Promise.all(
+        messages.map(async (message) => {
+          const msg = await gmail.users.messages.get({
+            userId: "me",
+            id: message.id,
+            format: "full",
+          });
+
+          const headers = msg.data.payload.headers;
+          const subject = headers.find(
+            (header) => header.name === "Subject"
+          ).value;
+          const from = headers.find((header) => header.name === "From").value;
+          const date = headers.find((header) => header.name === "Date").value;
+
+          return {
+            id: message.id,
+            threadId: message.threadId,
+            subject,
+            from,
+            date,
+          };
+        })
+      );
+
+      res.json(emails);
     } catch (error) {
-      console.log("Error block");
-      res.status(400).send(error);
+      console.error(error.message);
+      res.status(500).send("Something went wrong");
     }
   },
 };
