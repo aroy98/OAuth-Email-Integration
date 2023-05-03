@@ -77,6 +77,7 @@ module.exports = {
       res.redirect(deep_link_error_url);
     }
 
+    console.log(`The profile id is ${profile.id}`);
     await module.exports.SaveUserInfo(profile.id, {
       tokens,
       clientId: CLIENT_ID,
