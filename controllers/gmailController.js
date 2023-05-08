@@ -143,13 +143,14 @@ module.exports = {
           ).value;
           const from = headers.find((header) => header.name === "From").value;
           const date = headers.find((header) => header.name === "Date").value;
-
+          const body = msg.data.payload.body;
           return {
             id: message.id,
             threadId: message.threadId,
             subject,
             from,
             date,
+            body,
           };
         })
       );
