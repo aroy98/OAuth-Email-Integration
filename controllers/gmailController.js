@@ -53,6 +53,10 @@ module.exports = {
 
     authClient.setCredentials(tokens);
 
+    console.log("Tokens \n");
+    console.log(tokens.access_token);
+    console.log(tokens.refresh_token);
+
     const userInfo = google.oauth2({ version: "v2", auth: authClient });
 
     const { data: profile } = await userInfo.userinfo.get({});
