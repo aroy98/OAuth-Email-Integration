@@ -28,6 +28,7 @@ module.exports = {
       grant_type: "authorization_code",
       scope: config.settings.outlook_scope,
     };
+    console.log({ payload });
     axios
       .post(
         config.settings.outlook_token_endpoint,
@@ -75,12 +76,13 @@ module.exports = {
   RetrieveEmails: (req, res) => {
     const access_token = req.get("Authorization");
     axios
-      .get(config.settings.outlook_graph_endpoint + "/me/messages", {
+      .get(config.settings.outlook_graph_endpoint + '/me/messages?&$select=subject,body&$search="Unsubscribe OR unsubscribe"&$top=100', {
         headers: {
           Authorization: `Bearer ${access_token}`,
         },
       })
       .then(async (response) => {
+        console.log({ message_length: response.data.value.length });
         res.send(response.data.value);
       })
       .catch((error) => {
